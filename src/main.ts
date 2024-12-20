@@ -11,23 +11,22 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
+      whitelist: true, // Automatically strip unwanted properties
+      forbidNonWhitelisted: true, // Throw error for extra properties not in DTO
+      transform: true, // Automatically transform payloads to DTO classes
       exceptionFactory: (errors) => {
-        const messages = errors.map((error) => {
-          const constraints = error.constraints
-            ? Object.values(error.constraints).join(', ')
-            : 'Validation failed';
-
-          return `${error.property}: ${constraints}`;
-        });
+        // Customize validation error format
+        const messages = errors.map((error) => ({
+          field: error.property,
+          message: Object.values(error.constraints || {}).join(', '),
+        }));
 
         return new BadRequestException(messages);
       },
     }),
   );
 
+  // Global filter to handle all non-validation exceptions
   app.useGlobalFilters(new HttpErrorFilter());
 
   await app.listen(3000);

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,11 +9,11 @@ import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { IUser, IUserDocument, UserData } from './users.interface';
+import { IUser, UserData } from './users.interface';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel('User') private userModel: Model<IUser>) {}
+  constructor(@InjectModel('User') private readonly userModel: Model<IUser>) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<UserData> {
     const { email, password: plainPassword } = createUserDto;
@@ -57,6 +58,20 @@ export class UsersService {
     }
 
     return existingUser;
+  }
+
+  async updatePassword(email: string, newPassword: string): Promise<void> {
+    const user = await this.userModel.findOne({ email }).exec();
+    if (!user) throw new NotFoundException('User not found.');
+
+    if (newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters long.');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    await user.save();
   }
 
   async getUserById(userId: string): Promise<IUser> {
